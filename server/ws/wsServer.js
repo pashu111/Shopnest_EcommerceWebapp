@@ -37,42 +37,56 @@ const verifyToken = (token) => {
 };
 
 const canSubscribeToTopic = async (topic, tokenPayload) => {
-  if (topic === "public" || topic === "products") return true;
-  if (!tokenPayload) return false;
+  try {
+    if (topic === "public" || topic === "products") return true;
+    if (!tokenPayload) return false;
 
-  const tokenId = String(tokenPayload.id || tokenPayload._id || "");
-  if (!tokenId) return false;
+    const tokenId = String(tokenPayload.id || tokenPayload._id || "");
+    if (!tokenId) return false;
 
-  if (topic === "admin:orders") {
-    if (tokenPayload.isAdmin) return true;
-    if (!mongoose.isValidObjectId(tokenId)) return false;
-    return Boolean(await Admin.exists({ _id: tokenId }));
+    if (topic === "admin:orders") {
+      if (tokenPayload.isAdmin) return true;
+      if (!mongoose.isValidObjectId(tokenId)) return false;
+      return Boolean(await Admin.exists({ _id: tokenId }));
+    }
+
+    const userMatch = topic.match(/^user:([^:]+):orders$/);
+    if (userMatch) {
+      if (!mongoose.isValidObjectId(tokenId)) return false;
+      return userMatch[1] === tokenId && Boolean(await User.exists({ _id: tokenId }));
+    }
+
+    const deliveryMatch = topic.match(/^delivery_partner:([^:]+)$/);
+    if (deliveryMatch) {
+      if (!mongoose.isValidObjectId(tokenId)) return false;
+      return (
+        deliveryMatch[1] === tokenId &&
+        Boolean(await DeliveryPartner.exists({ _id: tokenId }))
+      );
+    }
+
+    return false;
+  } catch (error) {
+    console.error("[ws] canSubscribeToTopic error:", error?.message);
+    return false;
   }
-
-  const userMatch = topic.match(/^user:([^:]+):orders$/);
-  if (userMatch) {
-    if (!mongoose.isValidObjectId(tokenId)) return false;
-    return userMatch[1] === tokenId && Boolean(await User.exists({ _id: tokenId }));
-  }
-
-  const deliveryMatch = topic.match(/^delivery_partner:([^:]+)$/);
-  if (deliveryMatch) {
-    if (!mongoose.isValidObjectId(tokenId)) return false;
-    return (
-      deliveryMatch[1] === tokenId &&
-      Boolean(await DeliveryPartner.exists({ _id: tokenId }))
-    );
-  }
-
-  return false;
 };
 
 export const attachWebSocketServer = (httpServer, { path = "/ws" } = {}) => {
-  const wss = new WebSocketServer({ server: httpServer, path });
+  let wss;
+  try {
+    wss = new WebSocketServer({ server: httpServer, path });
+    console.log("[ws] WebSocketServer created on path:", path);
+  } catch (err) {
+    console.error("[ws] failed to create WebSocket server:", err?.message);
+    return { wss: null, publish: () => {}, getStats: () => ({ clients: 0 }) };
+  }
 
   const clientMeta = new Map();
 
   const publish = (topic, message) => {
+    if (!wss || !wss.clients) return;
+
     const payload = {
       type: "event",
       topic,
@@ -86,6 +100,10 @@ export const attachWebSocketServer = (httpServer, { path = "/ws" } = {}) => {
       sendJson(socket, payload);
     }
   };
+
+  wss.on("error", (err) => {
+    console.error("[ws] server error:", err?.message);
+  });
 
   wss.on("connection", (socket, req) => {
     const id =
@@ -192,11 +210,11 @@ export const attachWebSocketServer = (httpServer, { path = "/ws" } = {}) => {
     for (const socket of wss.clients) {
       if (socket.isAlive === false) {
         clientMeta.delete(socket);
-        socket.terminate();
+        try { socket.terminate(); } catch { /* ignore */ }
         continue;
       }
       socket.isAlive = false;
-      socket.ping();
+      try { socket.ping(); } catch { /* socket already closed */ }
     }
   }, 30000);
 

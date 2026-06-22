@@ -6,7 +6,7 @@ const connectDB = async () => {
     console.log("MongoDB Connected ✅");
   } catch (error) {
     console.error("MongoDB Error ❌", error.message);
-    process.exit(1);
+    // Don't crash — server can still serve static routes and CORS preflight
   }
 };
 

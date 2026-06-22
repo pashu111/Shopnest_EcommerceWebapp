@@ -20,11 +20,8 @@ export const getDefaultWebSocketUrl = ({ path = "/ws" } = {}) => {
     const wsProtocol = parsed.protocol === "https:" ? "wss:" : "ws:";
     return `${wsProtocol}//${parsed.host}${normalizedPath}`;
   } catch {
-    // Fallback: best-effort transform
-    return apiUrl
-      .replace(/\/api\/?$/, "")
-      .replace(/^http:/, "ws:")
-      .replace(/^https:/, "wss:")
-      .replace(/\/$/, "") + normalizedPath;
+    const base = apiUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
+    const wsBase = base.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
+    return wsBase + normalizedPath;
   }
 };

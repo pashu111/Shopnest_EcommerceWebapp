@@ -89,4 +89,18 @@ API.interceptors.request.use((req) => {
   return req;
 });
 
+API.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
+      console.error(
+        "[api] Network error — likely CORS or backend unreachable. Check:",
+        "VITE_API_URL =" + import.meta.env.VITE_API_URL,
+        "baseURL =" + baseURL
+      );
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default API;
