@@ -171,17 +171,27 @@ export default function ScratchCard({ reward, orderId }) {
   };
 
   return (
-    <div className="relative w-full max-w-[18.75rem] h-50 mx-auto mt-8 overflow-hidden rounded-lg shadow-inner">
-      {/* Hidden reward */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-yellow-100 rounded-lg">
-        <h2 className="text-2xl font-bold text-yellow-600">Reward</h2>
-        <p className="text-lg text-gray-800 mt-2">
-          {alreadyScratched ? `${revealedCoins} Coins (Already Revealed)` : 
-           revealedCoins === null ? "Scratch to reveal" : `${revealedCoins} Coins`}
+    <div className="relative w-full max-w-[18.75rem] h-50 mx-auto mt-8 overflow-hidden rounded-2xl shadow-lg">
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-amber-100 via-yellow-50 to-orange-100 rounded-2xl border border-amber-200">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg mb-3">
+          <span className="text-white text-xl font-bold">✦</span>
+        </div>
+        <h2 className="text-lg font-extrabold text-amber-800">
+          {alreadyScratched ? `${revealedCoins} Coins Earned` : 
+           revealedCoins === null ? "Scratch & Win!" : `${revealedCoins} Coins Earned!`}
+        </h2>
+        <p className="text-sm text-amber-700 mt-1 font-medium">
+          {alreadyScratched ? "Reward claimed" : 
+           revealedCoins === null ? "Slide to reveal your reward" : "🎉 Congratulations!"}
         </p>
+        {revealedCoins !== null && revealedCoins > 0 && (
+          <div className="mt-3 flex items-center gap-1.5 bg-amber-200/60 px-4 py-1.5 rounded-full">
+            <span className="text-amber-900 font-black text-xl">{revealedCoins}</span>
+            <span className="text-amber-800 text-xs font-bold uppercase tracking-wide">Coins</span>
+          </div>
+        )}
       </div>
 
-      {/* Scratchable canvas */}
       <canvas
         ref={canvasRef}
         width={300}

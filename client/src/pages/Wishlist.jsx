@@ -1,10 +1,9 @@
-import React from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { FaTrash } from "react-icons/fa";
+import { motion } from "framer-motion";
+import { Trash2, Heart } from "lucide-react";
 import { removeFromWishlist } from "../redux/slices/wishlistSlice";
 import { resolveAssetUrl } from "../utils/assetUrl";
 
-// Helper function to get item ID (handles both 'id' and '_id' fields)
 const getItemId = (item) => item.id ?? item._id;
 
 const Wishlist = () => {
@@ -16,6 +15,7 @@ const Wishlist = () => {
       <div className="min-h-screen bg-[#f7f5f2]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center shadow-sm">
+            <Heart size={48} className="mx-auto text-slate-300 mb-4" />
             <h2 className="text-2xl font-semibold text-slate-900">
               Your Wishlist is empty
             </h2>
@@ -49,18 +49,21 @@ const Wishlist = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {wishlist.map((item) => {
+          {wishlist.map((item, index) => {
             const itemId = getItemId(item);
             return (
-              <div
+              <motion.div
                 key={itemId}
-                className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-lg transition"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05, duration: 0.3 }}
+                className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
               >
-                <div className="relative overflow-hidden rounded-xl bg-slate-50">
+                <div className="relative overflow-hidden rounded-xl bg-slate-50 aspect-square">
                   <img
                     src={resolveAssetUrl(item.image)}
                     alt={item.name}
-                    className="h-44 w-full object-contain"
+                    className="h-full w-full object-contain p-4"
                   />
                 </div>
 
@@ -76,12 +79,12 @@ const Wishlist = () => {
                 <div className="mt-4">
                   <button
                     onClick={() => dispatch(removeFromWishlist(itemId))}
-                    className="w-full flex items-center justify-center gap-2 bg-rose-600 text-white px-3 py-2 rounded-lg hover:bg-rose-700 font-semibold text-sm"
+                    className="w-full flex items-center justify-center gap-2 bg-rose-50 text-rose-600 border border-rose-200 px-3 py-2.5 rounded-xl hover:bg-rose-600 hover:text-white hover:border-rose-600 font-semibold text-sm transition-all"
                   >
-                    <FaTrash /> Remove
+                    <Trash2 size={16} /> Remove
                   </button>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

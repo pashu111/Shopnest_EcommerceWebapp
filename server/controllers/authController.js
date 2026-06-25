@@ -64,7 +64,11 @@ export const loginUser = async (req, res) => {
 
     const user = await User.findOne({ $or: identifierQuery });
 
-    if (user && (await bcrypt.compare(password, user.password))) {
+    if (!user) {
+      return res.status(404).json({ message: "Account not found. Please register first." });
+    }
+
+    if (await bcrypt.compare(password, user.password)) {
       res.json({
         _id: user._id,
         name: user.name,
@@ -74,7 +78,7 @@ export const loginUser = async (req, res) => {
         token: generateToken(user._id),
       });
     } else {
-      res.status(401).json({ message: "Invalid credentials" });
+      res.status(401).json({ message: "Invalid password. Please try again." });
     }
   } catch (error) {
     res.status(500).json({ message: "Server error" });

@@ -1,5 +1,20 @@
 import User from "../models/User.js";
+import Reward from "../models/Reward.js";
+import Order from "../models/Order.js";
 import mongoose from "mongoose";
+
+const resolveOrderObjectId = async (orderId) => {
+  if (mongoose.Types.ObjectId.isValid(orderId)) {
+    return new mongoose.Types.ObjectId(orderId);
+  }
+  const order = await Order.findOne({ orderId }).select("_id").lean();
+  if (!order) {
+    const msg = `No order found for orderId: ${orderId}`;
+    console.error("[Rewards] " + msg);
+    return null;
+  }
+  return order._id;
+};
 
 export const generateReward = async (req, res) => {
   try {
@@ -10,57 +25,59 @@ export const generateReward = async (req, res) => {
       return res.status(400).json({ message: "Order ID is required" });
     }
 
-    // This API expects a MongoDB Order `_id` so we can safely track "already scratched" per order.
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-      return res.status(400).json({ message: "Invalid orderId. Expected MongoDB _id." });
+    console.log(`[Rewards] generateReward userId=${userId} orderId=${orderId}`);
+
+    const orderObjectId = await resolveOrderObjectId(orderId);
+    if (!orderObjectId) {
+      return res.status(400).json({ message: "Invalid or unknown order ID" });
     }
 
     const user = await User.findById(userId);
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if this order was already scratched
     if (user.lastOrderScratched) {
-      const lastOrderScratchedStr = user.lastOrderScratched.toString();
-      const orderIdStr = orderId.toString();
-
-      if (lastOrderScratchedStr === orderIdStr) {
-        return res.status(400).json({ 
+      const lastStr = user.lastOrderScratched.toString();
+      const currentStr = orderObjectId.toString();
+      if (lastStr === currentStr) {
+        console.log(`[Rewards] Duplicate scratch attempt for order ${currentStr}`);
+        return res.status(400).json({
           message: "This order has already been scratched",
           alreadyScratched: true,
-          coins: user.rewardCoins
+          coins: user.rewardCoins,
         });
       }
     }
 
-    // random reward (1 - 25), always generated on server
     const rewardCoins = Math.floor(Math.random() * 25) + 1;
+    console.log(`[Rewards] Generated ${rewardCoins} coins for user ${userId}`);
 
-    // add reward
-    const currentCoins =
-      typeof user.rewardCoins === "number" ? user.rewardCoins : 0;
-    user.rewardCoins = currentCoins + rewardCoins;
-    
-    // Store as ObjectId reference
-    user.lastOrderScratched = new mongoose.Types.ObjectId(orderId);
-
+    user.rewardCoins = (user.rewardCoins || 0) + rewardCoins;
+    user.lastOrderScratched = orderObjectId;
     await user.save();
+
+    await Reward.create({
+      userId,
+      orderId: orderObjectId,
+      rewardType: "coins",
+      amount: rewardCoins,
+      dateEarned: new Date(),
+    });
+
+    console.log(`[Rewards] User ${userId} total coins: ${user.rewardCoins}`);
 
     res.json({
       coins: rewardCoins,
       totalCoins: user.rewardCoins,
-      alreadyScratched: false
+      alreadyScratched: false,
     });
-
   } catch (error) {
-    console.error("Reward generation error:", error);
+    console.error("[Rewards] Reward generation error:", error);
     res.status(500).json({
       message: "Reward generation failed",
-      error: error.message
+      error: error.message,
     });
-
   }
 };
 
@@ -75,6 +92,7 @@ export const getRewardCoins = async (req, res) => {
 
     res.json({ coins: user.rewardCoins || 0 });
   } catch (error) {
+    console.error("[Rewards] getRewardCoins error:", error);
     res.status(500).json({ message: "Failed to fetch reward coins" });
   }
 };
@@ -88,8 +106,9 @@ export const checkOrderScratched = async (req, res) => {
       return res.status(400).json({ message: "Order ID is required" });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-      return res.status(400).json({ message: "Invalid orderId. Expected MongoDB _id." });
+    const orderObjectId = await resolveOrderObjectId(orderId);
+    if (!orderObjectId) {
+      return res.json({ alreadyScratched: false, coins: 0 });
     }
 
     const user = await User.findById(userId).select("rewardCoins lastOrderScratched");
@@ -98,17 +117,16 @@ export const checkOrderScratched = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    let isScratched = false;
-    
-    if (user.lastOrderScratched) {
-      isScratched = user.lastOrderScratched.toString() === orderId.toString();
-    }
+    const isScratched = user.lastOrderScratched
+      ? user.lastOrderScratched.toString() === orderObjectId.toString()
+      : false;
 
     res.json({
       alreadyScratched: isScratched,
-      coins: user.rewardCoins || 0
+      coins: user.rewardCoins || 0,
     });
   } catch (error) {
+    console.error("[Rewards] checkOrderScratched error:", error);
     res.status(500).json({ message: "Failed to check scratch status" });
   }
 };

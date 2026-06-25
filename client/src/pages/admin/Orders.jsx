@@ -1,4 +1,4 @@
-﻿﻿﻿﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   Filter,
@@ -106,7 +106,7 @@ const AdminOrders = () => {
 
         if (type === "new_order") {
           setNewOrderNotification({
-            message: `New order received: ${orderId.slice(-8).toUpperCase()}`,
+            message: `New order received: ${order.orderId || orderId.slice(-8).toUpperCase()}`,
             orderId,
             amount: order.totalAmount,
           });
@@ -253,6 +253,7 @@ const AdminOrders = () => {
       const customerPhone = order.customerPhone || "";
       const address = order.deliveryAddress || "";
       const orderId = order._id || "";
+      const orderNumber = order.orderId || "";
       const payment = order.paymentMethod || "";
 
       return [
@@ -262,6 +263,7 @@ const AdminOrders = () => {
         customerPhone,
         address,
         orderId,
+        orderNumber,
         payment,
       ]
         .join(" ")
@@ -437,6 +439,7 @@ const AdminOrders = () => {
         {!isLoading && !loadError &&
           filteredOrders.map((order) => {
             const orderId = order._id || order.id;
+            const displayOrderId = order.orderId || order._id;
             const status = normalizeStatus(order.status);
             const badgeClass = STATUS_STYLES[status] || "bg-slate-100 text-slate-600";
             const createdAt = order.createdAt
@@ -464,7 +467,12 @@ const AdminOrders = () => {
                   <div className="space-y-2 min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
                       <span className="text-xs font-semibold uppercase text-slate-400">Order</span>
-                      <span className="font-bold text-slate-900 break-all">{orderId}</span>
+                      <span className="font-bold text-slate-900 break-all">{displayOrderId}</span>
+                      {order._id && order.orderId && (
+                        <span className="text-[10px] text-slate-400 font-mono" title="MongoDB _id">
+                          {order._id}
+                        </span>
+                      )}
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${badgeClass}`}>
                         {status}
                       </span>

@@ -35,43 +35,55 @@ if (FRONTEND_URL && !allowedOrigins.includes(FRONTEND_URL)) {
   allowedOrigins.push(FRONTEND_URL);
 }
 
-const originAllowed = (origin) => origin && allowedOrigins.includes(origin);
-
 // ─────────────────────────────────────────────────────────────────────────
 // HTTP server with CORS enforcement at the Node.js transport layer
 //
 // Express 5's response pipeline may drop headers set by middleware via
-// res.setHeader().  The two strategies below operate OUTSIDE Express,
-// intercepting the raw http.ServerResponse object.  This guarantees CORS
-// headers are present on every HTTP response, including error paths.
+// res.setHeader() or may bypass res.writeHead() entirely.  We operate
+// OUTSIDE Express, intercepting the raw http.ServerResponse object.
+// We patch both writeHead AND end so CORS headers survive regardless of
+// which internal path Express 5 takes to serialise the response.
 // ─────────────────────────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   const origin = req.headers.origin;
-  const isAllowed = originAllowed(origin);
+  const isAllowed = origin && allowedOrigins.includes(origin);
 
   // ── 1. OPTIONS preflight — handle at transport level, Express never runs ──
-  if (req.method === "OPTIONS" && isAllowed) {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Max-Age": "86400",
-    });
+  if (req.method === "OPTIONS") {
+    if (isAllowed) {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Max-Age": "86400",
+      });
+    }
     res.end();
     return;
   }
 
-  // ── 2. All other requests — patch writeHead to inject CORS at serialisation ──
+  // ── 2. All other requests — patch writeHead AND end to inject CORS headers ──
   //     This fires AFTER all Express middleware + route handlers complete.
   if (isAllowed) {
-    const originalWriteHead = res.writeHead.bind(res);
-    res.writeHead = function (statusCode, statusMessage, headers) {
-      if (!this.headersSent) {
-        this.setHeader("Access-Control-Allow-Origin", origin);
-        this.setHeader("Access-Control-Allow-Credentials", "true");
+    const origWriteHead = res.writeHead.bind(res);
+    const origEnd = res.end.bind(res);
+
+    const setCorsHeaders = (response) => {
+      if (!response.headersSent) {
+        response.setHeader("Access-Control-Allow-Origin", origin);
+        response.setHeader("Access-Control-Allow-Credentials", "true");
       }
-      return originalWriteHead(statusCode, statusMessage, headers);
+    };
+
+    res.writeHead = function (...args) {
+      setCorsHeaders(this);
+      return origWriteHead(...args);
+    };
+
+    res.end = function (...args) {
+      setCorsHeaders(this);
+      return origEnd(...args);
     };
   }
 

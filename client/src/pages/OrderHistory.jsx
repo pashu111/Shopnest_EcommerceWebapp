@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { getUserOrders } from "../services/orderService";
 import { Package, ChevronRight, Clock, Truck, CheckCircle } from "lucide-react";
 
@@ -91,19 +92,24 @@ export default function OrderHistory() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
         <h2 className="text-2xl font-bold text-slate-900 mb-6">My Orders</h2>
         <div className="space-y-4">
-          {orders.map((order) => {
+          {orders.map((order, index) => {
             if (!order) return null;
             return (
-              <Link
+              <motion.div
                 key={order._id || order.id}
-                to={`/orders/${order._id}`}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05, duration: 0.3 }}
+              >
+              <Link
+                to={`/orders/${order.orderId || order._id}`}
                 className="block bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md hover:border-slate-300 transition"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-xs font-mono text-slate-500">
-                        #{order._id?.slice(-8).toUpperCase()}
+                        #{(order.orderId || order._id)?.toString().padStart(8, "0")}
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
@@ -131,11 +137,12 @@ export default function OrderHistory() {
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                </div>
-              </Link>
-            );
-          })}
+                    <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                  </div>
+                </Link>
+              </motion.div>
+              );
+            })}
         </div>
       </div>
     </div>

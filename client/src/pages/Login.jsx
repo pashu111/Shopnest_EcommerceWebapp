@@ -1,26 +1,80 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser } from "../redux/slices/authSlice";
+import { loginUser, clearError } from "../redux/slices/authSlice";
 import { Link, useNavigate } from "react-router-dom";
+
+const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+const MOBILE_REGEX = /^[0-9]{10}$/;
+
+function validateIdentifier(val) {
+  if (!val) return "";
+  if (GMAIL_REGEX.test(val) || MOBILE_REGEX.test(val)) return "";
+  return "Enter a valid Gmail address or 10-digit mobile number.";
+}
+
+function validatePassword(val) {
+  if (!val) return "Password cannot be empty.";
+  return "";
+}
 
 export default function Login() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error: serverError } = useSelector((state) => state.auth);
 
+  const errors = useMemo(() => {
+    const e = {};
+    const ie = validateIdentifier(identifier);
+    if (ie) e.identifier = ie;
+    const pe = validatePassword(password);
+    if (pe) e.password = pe;
+    return e;
+  }, [identifier, password]);
+
+  const isClientValid = Object.keys(errors).length === 0;
+  const canSubmit = identifier.trim() !== "" && password !== "";
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const handleIdentifierChange = (e) => {
+    setIdentifier(e.target.value);
+    if (serverError) dispatch(clearError());
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    if (serverError) dispatch(clearError());
+  };
+
+  const inputClass = (field) => {
+    const showErr = (touched[field] || submitted) && errors[field];
+    return `w-full border p-3 rounded-xl focus:ring-2 outline-none transition focus:ring-emerald-500 ${
+      showErr ? "border-rose-500" : "border-slate-200"
+    }`;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    const loginData = { identifier, password, isAdmin: false };
-
-    dispatch(loginUser(loginData)).then((res) => {
+    setSubmitted(true);
+    if (!isClientValid) return;
+    dispatch(loginUser({ identifier, password, isAdmin: false })).then((res) => {
       if (res.meta.requestStatus === "fulfilled") {
         navigate("/home");
       }
     });
   };
+
+  const isAccountNotFound =
+    serverError === "Account not found. Please register first.";
+  const isPasswordWrong =
+    serverError === "Invalid password. Please try again.";
 
   return (
     <div className="min-h-screen bg-[#f7f5f2]">
@@ -73,30 +127,57 @@ export default function Login() {
               </h2>
               <p className="text-slate-600 mt-1">Sign in to continue shopping</p>
 
-              {serverError && (
-                <p className="text-rose-600 text-sm mt-4 text-center font-semibold bg-rose-50 p-2 rounded">
-                  {serverError}
-                </p>
-              )}
+              <form
+                onSubmit={handleSubmit}
+                className="mt-6 space-y-4"
+                noValidate
+              >
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Email or Mobile Number"
+                    className={inputClass("identifier")}
+                    value={identifier}
+                    onChange={handleIdentifierChange}
+                    onBlur={() => handleBlur("identifier")}
+                  />
+                  {(touched.identifier || submitted) && errors.identifier && (
+                    <p className="text-rose-500 text-sm mt-1">
+                      {errors.identifier}
+                    </p>
+                  )}
+                  {isAccountNotFound && (
+                    <p className="text-rose-500 text-sm mt-1">
+                      {serverError}{" "}
+                      <Link
+                        to="/register"
+                        className="font-semibold underline hover:text-rose-700"
+                      >
+                        Register Now
+                      </Link>
+                    </p>
+                  )}
+                </div>
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                <input
-                  type="text"
-                  placeholder="Email or Mobile Number"
-                  className="w-full border p-3 rounded-xl focus:ring-2 outline-none transition focus:ring-emerald-500 border-slate-200"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  required
-                />
+                <div>
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    className={inputClass("password")}
+                    value={password}
+                    onChange={handlePasswordChange}
+                    onBlur={() => handleBlur("password")}
+                  />
+                  {(touched.password || submitted) && errors.password && (
+                    <p className="text-rose-500 text-sm mt-1">
+                      {errors.password}
+                    </p>
+                  )}
+                  {isPasswordWrong && (
+                    <p className="text-rose-500 text-sm mt-1">{serverError}</p>
+                  )}
+                </div>
 
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="w-full border p-3 rounded-xl focus:ring-2 outline-none transition focus:ring-emerald-500 border-slate-200"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
                 <div className="flex justify-end">
                   <Link
                     to="/forgot-password"
@@ -110,7 +191,7 @@ export default function Login() {
                 <button
                   type="submit"
                   className="w-full py-3 rounded-xl font-semibold text-white transition disabled:opacity-50 shadow-lg bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
-                  disabled={loading}
+                  disabled={!canSubmit || loading}
                 >
                   {loading ? "Verifying..." : "Login"}
                 </button>
@@ -125,7 +206,6 @@ export default function Login() {
                   Register
                 </Link>
               </p>
-             
             </div>
           </div>
         </div>

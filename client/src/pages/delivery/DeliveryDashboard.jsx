@@ -750,7 +750,7 @@ export default function DeliveryDashboard() {
           // Update existing order
           return prev.map((o) => String(o._id || o.id) === orderId ? orderData : o);
         }
-        setOrdersError(`🔔 New order assigned! Order #${formatOrderId(orderId)}`);
+        setOrdersError(`🔔 New order assigned! Order #${orderData?.orderId || formatOrderId(orderId)}`);
         return [orderData, ...prev];
       });
     } else if (eventType === "order_status_updated") {
@@ -1202,7 +1202,7 @@ export default function DeliveryDashboard() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="h-2 w-2 rounded-full bg-sky-500 animate-pulse"></span>
                           <p className="text-sm font-semibold text-slate-900 truncate">
-                            Order #{formatOrderId(id)} · {customer}
+                            Order #{order?.orderId || formatOrderId(id)} · {customer}
                           </p>
                         </div>
                         <p className="text-xs text-slate-600 mt-1 truncate">
@@ -1411,7 +1411,7 @@ export default function DeliveryDashboard() {
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Order Details</p>
                 <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900">
-                  #{formatOrderId(activeOrderId)}
+                  #{activeOrder?.orderId || formatOrderId(activeOrderId)}
                 </h3>
               </div>
               <button

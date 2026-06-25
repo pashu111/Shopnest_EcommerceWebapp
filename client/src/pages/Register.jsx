@@ -1,25 +1,86 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "../redux/slices/authSlice";
 import { Link, useNavigate } from "react-router-dom";
+
+const NAME_REGEX = /^[A-Za-z]+(?:\s[A-Za-z]+)*$/;
+const PHONE_REGEX = /^[0-9]{10}$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+
+function validateName(val) {
+  const v = val.trim();
+  if (!v || v.length < 2 || v.length > 50 || !NAME_REGEX.test(v))
+    return "Full Name can contain only letters and spaces.";
+  return "";
+}
+
+function validatePhone(val) {
+  if (!val || !PHONE_REGEX.test(val))
+    return "Phone Number must be exactly 10 digits.";
+  return "";
+}
+
+function validateEmail(val) {
+  if (!val || !EMAIL_REGEX.test(val))
+    return "Only Gmail addresses are allowed.";
+  return "";
+}
+
+function validatePassword(val) {
+  if (!val || val.length < 8)
+    return "Password must be at least 8 characters long.";
+  return "";
+}
 
 export default function Register() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
 
+  const errors = useMemo(() => {
+    const e = {};
+    const ne = validateName(name);
+    if (ne) e.name = ne;
+    const pe = validatePhone(phone);
+    if (pe) e.phone = pe;
+    const ee = validateEmail(email);
+    if (ee) e.email = ee;
+    const pwe = validatePassword(password);
+    if (pwe) e.password = pwe;
+    return e;
+  }, [name, phone, email, password]);
+
+  const isValid = Object.keys(errors).length === 0;
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const inputClass = (field) => {
+    const show = touched[field] || submitted;
+    return `w-full border p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none ${
+      show && errors[field] ? "border-rose-500" : "border-slate-200"
+    }`;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(registerUser({ name, phone, email, password })).then((res) => {
-      if (res.meta.requestStatus === "fulfilled") {
-        navigate("/login");
+    setSubmitted(true);
+    if (!isValid) return;
+    dispatch(registerUser({ name: name.trim(), phone, email, password })).then(
+      (res) => {
+        if (res.meta.requestStatus === "fulfilled") {
+          navigate("/login");
+        }
       }
-    });
+    );
   };
 
   return (
@@ -81,46 +142,67 @@ export default function Register() {
                 </p>
               )}
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 border-slate-200"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    className={inputClass("name")}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onBlur={() => handleBlur("name")}
+                  />
+                  {(touched.name || submitted) && errors.name && (
+                    <p className="text-rose-500 text-sm mt-1">{errors.name}</p>
+                  )}
+                </div>
 
-                <input
-                  type="tel"
-                  placeholder="Phone Number"
-                  className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 border-slate-200"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
+                <div>
+                  <input
+                    type="tel"
+                    placeholder="Phone Number"
+                    className={inputClass("phone")}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    onBlur={() => handleBlur("phone")}
+                  />
+                  {(touched.phone || submitted) && errors.phone && (
+                    <p className="text-rose-500 text-sm mt-1">{errors.phone}</p>
+                  )}
+                </div>
 
-                <input
-                  type="email"
-                  placeholder="Email"
-                  className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 border-slate-200"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    className={inputClass("email")}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onBlur={() => handleBlur("email")}
+                  />
+                  {(touched.email || submitted) && errors.email && (
+                    <p className="text-rose-500 text-sm mt-1">{errors.email}</p>
+                  )}
+                </div>
 
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 border-slate-200"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div>
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    className={inputClass("password")}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onBlur={() => handleBlur("password")}
+                  />
+                  {(touched.password || submitted) && errors.password && (
+                    <p className="text-rose-500 text-sm mt-1">{errors.password}</p>
+                  )}
+                </div>
 
                 <button
+                  type="submit"
                   className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50 shadow-lg shadow-emerald-200/60"
-                  disabled={loading}
+                  disabled={!isValid || loading}
                 >
                   {loading ? "Registering..." : "Create Account"}
                 </button>

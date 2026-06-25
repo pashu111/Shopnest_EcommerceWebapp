@@ -109,7 +109,7 @@ export default function Confirmation() {
 
            <div className="mt-6 flex flex-wrap gap-3">
              <Link
-               to={`/orders/${orderDbId || orderId}`}
+                to={`/orders/${orderId || orderDbId}`}
                className="bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold hover:bg-slate-800"
              >
                Track Order
@@ -130,10 +130,18 @@ export default function Confirmation() {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="mt-8"
           >
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 mb-4">
+            <div className="bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+              <div className="text-center mb-2">
+                <span className="inline-block text-xs font-bold uppercase tracking-widest text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
+                  Bonus Reward
+                </span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 text-center mt-3">
                 Scratch to Reveal Your Reward
               </h2>
+              <p className="text-sm text-slate-500 text-center mt-1">
+                You earned a scratch card for this order!
+              </p>
               <ScratchCard orderId={orderDbId || orderId} />
             </div>
           </motion.div>

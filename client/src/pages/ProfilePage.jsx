@@ -489,7 +489,7 @@ export default function ProfilePage() {
           ) : (
             <div className="grid gap-6">
               {visibleOrders.map((order) => {
-                const orderId = order.id || order._id;
+                const orderId = order.orderId || order.id || order._id;
                 const stepIndex = getStepIndex(order.status);
                 const isCancelled = order.status === "Cancelled";
                 const displayStatus = getDisplayStatus(order.status);

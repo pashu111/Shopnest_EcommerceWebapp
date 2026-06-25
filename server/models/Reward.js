@@ -1,29 +1,29 @@
 import mongoose from "mongoose";
 
 const rewardSchema = new mongoose.Schema({
-    userId:{
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true
     },
-    rewardType:{
+    orderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Order",
+        default: null,
+    },
+    rewardType: {
         type: String,
-        enum: ["coins","coupon","badge"],
+        enum: ["coins", "coupon", "badge"],
         default: "coins",
     },
-    amount:{
+    amount: {
         type: Number,
         required: true,
     },
-    amount:{
-        type: Number,
-        required: true,
-    },
-    dataEarned:{
+    dateEarned: {
         type: Date,
         default: Date.now,
     },
-
 });
 
 export default mongoose.model("Reward", rewardSchema);
